@@ -3,7 +3,7 @@ title: "Zenn / Nostr / soupault に同時公開するブログを作った"
 emoji: "🍜"
 type: "tech"
 topics: ["nostr", "soupault", "zenn", "githubactions"]
-published: false
+published: true
 ---
 
 このリポジトリは Markdown 原稿 (`articles/`) を 1 か所で管理し、次の 3 か所へ同時公開します。
