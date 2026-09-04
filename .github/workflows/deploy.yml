@@ -1,0 +1,59 @@
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  SOUPAULT_VERSION: 5.3.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # 記事の初回コミット日時を日付に使うため全履歴を取得する
+          fetch-depth: 0
+
+      - name: Install soupault
+        run: |
+          curl -sSL -o soupault.tar.gz "https://github.com/PataphysicalSociety/soupault/releases/download/${SOUPAULT_VERSION}/soupault-${SOUPAULT_VERSION}-linux-x86_64.tar.gz"
+          tar xzf soupault.tar.gz
+          echo "$PWD/soupault-${SOUPAULT_VERSION}-linux-x86_64" >> "$GITHUB_PATH"
+
+      - name: Generate posts from articles
+        run: python3 scripts/build_posts.py
+
+      - name: Build site
+        run: soupault --profile live
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

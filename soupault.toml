@@ -1,0 +1,60 @@
+# soupault 5.3.0 設定
+# https://soupault.net/reference-manual/
+
+[settings]
+  soupault_version = "5.3.0"
+  verbose = true
+
+  site_dir = "site"
+  build_dir = "build"
+
+  generator_mode = true
+  complete_page_selector = "html"
+  default_template_file = "templates/main.html"
+  default_content_selector = "main"
+  default_content_action = "append_child"
+
+  clean_urls = true
+  page_file_extensions = ["htm", "html"]
+  markdown_extensions = ["md"]
+
+  pretty_print_html = true
+
+[widgets.page-title]
+  widget = "title"
+  selector = "h1"
+  default = "kengirie's blog"
+
+# デプロイ時 (--profile live) のみ、内部リンクを GitHub Pages の URL 起点に書き換える。
+# ローカルの `make build` ではルート相対のままなので http.server でそのまま閲覧できる。
+[widgets.absolutize]
+  widget = "absolute_links"
+  profile = "live"
+  prefix = "https://kengirie.github.io/blog"
+
+[index]
+  section = "posts"
+  sort_by = "date"
+  sort_type = "calendar"
+  sort_descending = true
+  date_formats = ["%F"]
+  strict_sort = false
+
+[index.fields.title]
+  selector = ["h1"]
+
+[index.fields.date]
+  selector = ["time"]
+  extract_attribute = "datetime"
+  fallback_to_content = true
+
+[index.views.blog]
+  index_selector = "#blog-index"
+  section = "posts"
+  include_subsections = true
+  index_item_template = """
+    <li>
+      <time>{{date}}</time>
+      <a href="{{url}}">{{title}}</a>
+    </li>
+  """

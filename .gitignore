@@ -1,0 +1,13 @@
+# soupault ビルド成果物
+build/
+.soupault-cache/
+
+# articles/ から生成されるファイル
+site/posts/
+site/images/
+
+# zenn-cli
+node_modules/
+
+.DS_Store
+.claude/settings.local.json

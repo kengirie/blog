@@ -1,0 +1,80 @@
+name: Publish to Nostr
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "articles/**"
+  workflow_dispatch:
+    inputs:
+      file:
+        description: "再送信する記事ファイル (例: articles/foo.md)"
+        required: true
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      files: ${{ steps.changed.outputs.files }}
+      count: ${{ steps.changed.outputs.count }}
+      has-key: ${{ steps.key.outputs.has-key }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # NOSTR_PRIVATE_KEY 未設定のうちは publish をスキップする (workflow を失敗させない)
+      - name: Check secret
+        id: key
+        env:
+          NOSTR_PRIVATE_KEY: ${{ secrets.NOSTR_PRIVATE_KEY }}
+        run: |
+          if [ -n "$NOSTR_PRIVATE_KEY" ]; then
+            echo "has-key=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-key=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::NOSTR_PRIVATE_KEY secret is not set; skipping publish"
+          fi
+
+      - name: Detect changed published articles
+        id: changed
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+          INPUT_FILE: ${{ inputs.file }}
+        run: python3 scripts/changed_articles.py
+
+  publish:
+    needs: detect
+    if: needs.detect.outputs.count != '0' && needs.detect.outputs.has-key == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        file: ${{ fromJSON(needs.detect.outputs.files) }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # published_at に記事の初回コミット日時を使うため全履歴を取得する
+          fetch-depth: 0
+
+      - name: Build payload
+        id: payload
+        env:
+          ARTICLE: ${{ matrix.file }}
+        run: python3 scripts/nostr_payload.py "$ARTICLE"
+
+      - name: Publish kind 30023
+        id: publish
+        uses: snow-actions/nostr@v2.0.0
+        with:
+          relays: ${{ vars.NOSTR_RELAYS }}
+          private-key: ${{ secrets.NOSTR_PRIVATE_KEY }}
+          kind: 30023
+          content: ${{ steps.payload.outputs.content }}
+          tags: ${{ steps.payload.outputs.tags }}
+
+      - name: Show published event
+        env:
+          EVENT: ${{ steps.publish.outputs.event }}
+        run: echo "$EVENT"
